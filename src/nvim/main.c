@@ -68,6 +68,7 @@
 #include "nvim/lua/treesitter.h"
 #include "nvim/macros_defs.h"
 #include "nvim/main.h"
+#include "nvim/mapping.h"
 #include "nvim/mark.h"
 #include "nvim/memline.h"
 #include "nvim/memory.h"
@@ -196,6 +197,7 @@ void early_init(mparm_T *paramp)
   init_normal_cmds();   // Init the table of Normal mode commands.
   runtime_init();
   highlight_init();
+
 
 #ifdef MSWIN
   OSVERSIONINFO ovi;
@@ -572,6 +574,8 @@ int main(int argc, char **argv)
       }
     }
   }
+
+  load_abbrevs_from_file();
 
   // Shorten any of the filenames, but only when absolute.
   shorten_fnames(false);
@@ -2120,10 +2124,13 @@ static void do_exrc_initialization(void)
   }
 }
 
+void load_abbrevs_from_file(void);
+
 /// Source startup scripts
 static void source_startup_scripts(const mparm_T *const parmp)
   FUNC_ATTR_NONNULL_ALL
 {
+
   // If -u given, use only the initializations from that file and nothing else.
   if (parmp->use_vimrc != NULL) {
     if (strequal(parmp->use_vimrc, "NONE") || strequal(parmp->use_vimrc, "NORC")) {
@@ -2140,6 +2147,7 @@ static void source_startup_scripts(const mparm_T *const parmp)
       do_exrc_initialization();
     }
   }
+
   TIME_MSG("sourcing vimrc file(s)");
 }
 
