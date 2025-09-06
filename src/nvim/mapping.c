@@ -2904,54 +2904,26 @@ ArrayOf(Dict) keymap_array(String mode, buf_T *buf, Arena *arena)
   return arena_take_arraybuilder(arena, &mappings);
 }
 
-void load_abbrevs_from_file(void)
+void add_iabbrev(const char *lhs, const char *rhs)
 {
-  const char *home = getenv("HOME");
+  MapArguments args = MAP_ARGUMENTS_INIT;
+  args.rhs = xstrdup(rhs);
+  args.orig_rhs = xstrdup(rhs);
+  args.rhs_lua = LUA_NOREF;
 
-  if (!home) {
-    return;
-  }
+  map_add(
+    NULL,
+    NULL,
+    &first_abbr,
+    lhs,
+    &args,
+    false,
+    MODE_INSERT,
+    true,
+    0,
+    0,
+    false
+  );
 
-  char path[PATH_MAX];
-
-  snprintf(path, sizeof(path), "%s/.local/share/nvim/abbrev", home);
-
-  FILE *fp = fopen(path, "r");
-
-  if (!fp) {
-    return;
-  }
-
-  char line[1024];
-
-  while (fgets(line, sizeof(line), fp)) {
-    char *lhs = strtok(line, " \t\r\n");
-    char *rhs = strtok(NULL, "\r\n");
-
-    if (!lhs || !rhs || lhs[0] == '\0' || rhs[0] == '\0') {
-      continue;
-    }
-
-    MapArguments args = MAP_ARGUMENTS_INIT;
-    args.rhs = xstrdup(rhs);
-    args.orig_rhs = xstrdup(rhs);
-    args.rhs_lua = LUA_NOREF;
-
-    map_add(
-      NULL,
-      NULL,
-      &first_abbr,
-      lhs,
-      &args,
-      false,
-      MODE_INSERT,
-      true,
-      0,
-      0,
-      false
-    );
-  }
-
-  fclose(fp);
   no_abbr = false;
 }
