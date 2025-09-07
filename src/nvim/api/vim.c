@@ -1506,8 +1506,8 @@ ArrayOf(DictAs(get_keymap)) nvim_get_keymap(String mode, Arena *arena)
 /// @param  mode  Mode short-name (map command prefix: "n", "i", "v", "x", …)
 ///               or "!" for |:map!|, or empty string for |:map|.
 ///               "ia", "ca" or "!a" for abbreviation in Insert mode, Cmdline mode, or both, respectively
-/// @param  lhs   Left-hand-side |{lhs}| of the mapping.
-/// @param  rhs   Right-hand-side |{rhs}| of the mapping.
+/// @param  lhs   Left-hand-side |{lhs}| of the mapping, or array of lhs strings
+/// @param  rhs   Right-hand-side |{rhs}| of the mapping, or array of rhs strings
 /// @param  opts  Optional parameters map: Accepts all |:map-arguments| as keys except [<buffer>],
 ///               values are booleans (default false). Also:
 ///               - "noremap" disables |recursive_mapping|, like |:noremap|
@@ -1517,11 +1517,18 @@ ArrayOf(DictAs(get_keymap)) nvim_get_keymap(String mode, Arena *arena)
 ///                 resulting string (see |nvim_replace_termcodes()|). Returning nil from the Lua
 ///                 "callback" is equivalent to returning an empty string.
 /// @param[out]   err   Error details, if any.
-void nvim_set_keymap(uint64_t channel_id, String mode, String lhs, String rhs, Dict(keymap) *opts,
+void nvim_set_keymap(uint64_t channel_id, String mode, Object lhs, Object rhs, Dict(keymap) *opts,
                      Error *err)
   FUNC_API_SINCE(6)
 {
-  modify_keymap(channel_id, -1, false, mode, lhs, rhs, opts, err);
+  if (lhs.type == kObjectTypeArray && rhs.type == kObjectTypeArray) {
+    keymap_bulk_insert(channel_id, mode, lhs.data.array, rhs.data.array, err);
+  } else if (lhs.type == kObjectTypeString && rhs.type == kObjectTypeString) {
+    modify_keymap(channel_id, -1, false, mode, lhs.data.string, rhs.data.string, opts, err);
+  } else {
+    api_set_error(err, kErrorTypeValidation, "lhs and rhs must both be strings or both be arrays");
+    return;
+  }
 }
 
 /// Unmaps a global |mapping| for the given mode.

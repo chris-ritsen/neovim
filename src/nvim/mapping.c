@@ -2857,6 +2857,64 @@ fail_and_free:
   xfree(parsed_args.desc);
 }
 
+/// bulk mapping insert
+///
+/// @param channel_id  API channel
+/// @param mode        Mode string (e.g. 'n', 'ia', 'v')
+/// @param lhs_array   Array of left-hand side string objects
+/// @param rhs_array   Array of right-hand side string objects
+/// @param err         Error output
+void keymap_bulk_insert(uint64_t channel_id, String mode, Array lhs_array, Array rhs_array, Error *err)
+  FUNC_ATTR_NONNULL_ALL
+{
+  const sctx_T save_current_sctx = api_set_sctx(channel_id);
+
+  char *p = mode.size > 0 ? mode.data : "m";
+  bool forceit = *p == '!';
+  int mode_val = get_map_mode(&p, forceit);
+
+  if (forceit) {
+    p++;
+  }
+
+  bool is_abbrev = (mode_val & (MODE_INSERT | MODE_CMDLINE)) != 0 && *p == 'a';
+
+  for (size_t i = 0; i < lhs_array.size; i++) {
+    String lhs_str = lhs_array.items[i].data.string;
+    String rhs_str = rhs_array.items[i].data.string;
+
+    MapArguments args = MAP_ARGUMENTS_INIT;
+    args.rhs = xmemdupz(rhs_str.data, rhs_str.size);
+    args.orig_rhs = xmemdupz(rhs_str.data, rhs_str.size);
+    args.rhs_lua = LUA_NOREF;
+    char *lhs_cstr = xmemdupz(lhs_str.data, lhs_str.size);
+
+    map_add(NULL,
+            NULL,
+            is_abbrev ? &first_abbr : NULL,
+            lhs_cstr,
+            &args,
+            false,
+            mode_val,
+            is_abbrev,
+            current_sctx.sc_sid,
+            current_sctx.sc_lnum,
+            false);
+
+    xfree(lhs_cstr);
+
+    if (is_abbrev) {
+      no_abbr = false;
+    }
+
+    if (ERROR_SET(err)) {
+      break;
+    }
+  }
+
+  current_sctx = save_current_sctx;
+}
+
 /// Get an array containing dictionaries describing mappings
 /// based on mode and buffer id
 ///
